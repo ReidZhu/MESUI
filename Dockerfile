@@ -1,5 +1,5 @@
 # STEP 1: Build
-FROM harbor1.wok.wistron.com.cn/baseimage/node:12-alpine as builder
+FROM node:12-alpine as builder
 WORKDIR /app
 
 COPY ./package.json  /app
@@ -11,7 +11,7 @@ COPY ./ /app
 RUN npm run build
 
 # STEP 2: Setup
-FROM harbor1.wok.wistron.com.cn/baseimage/nginx:latest
+FROM nginx:latest
 
 RUN rm -rf /etc/nginx/nginx.conf
 

@@ -1,0 +1,114 @@
+stages:
+  - test
+  - setup
+  - deploy
+  - update
+  - update-daily
+
+auto_testing:
+  image: harbor1.wok.wistron.com.cn/baseimage/vc-tool:latest
+  except:
+    - tags
+  stage: test
+  tags:
+    - docker01
+  before_script:
+    - if test "${SOURCEPJ}" != "true"; then echo "Not Source Code Project, exit ci."; exit 0; fi;
+  script:
+    - echo "No Need Test"
+
+get_version:
+  only:
+    - master
+    - Develop
+    - schedules
+    - /^fix-.*$/
+  image: harbor1.wok.wistron.com.cn/baseimage/vc-tool:latest
+  stage: setup
+  tags:
+    - docker01
+  before_script:
+    - . ci-version.sh
+  script:
+    - get_version
+  artifacts:
+    paths:
+      - build-vars.sh
+    when: always
+    expire_in: 1 days
+
+docker-build:
+  only:
+    - master
+    - Develop
+    - /^fix-.*$/
+  except:
+    - schedules
+  image: harbor1.wok.wistron.com.cn/baseimage/vc-tool:latest
+  stage: deploy
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  tags:
+    - docker01
+  before_script:
+    - if test "${SOURCEPJ}" != "true"; then echo "Not Source Code Project, exit ci."; exit 0; fi;
+    - source build-vars.sh
+    - echo ${SYS_VER}
+    - . ci-version.sh
+  script:
+    - docker_build
+  artifacts:
+    paths:
+      - build-vars-docker_build.sh
+    when: always
+    expire_in: 1 days
+  cache:
+    key: ${CI_PROJECT_NAME}
+    paths:
+      - node_modules/
+
+publish:
+  only:
+    - master
+    - Develop
+    - /^fix-.*$/
+  except:
+    - schedules
+  tags:
+    - docker01
+  stage: update
+  image: harbor1.wok.wistron.com.cn/baseimage/vc-tool:latest
+  before_script:
+    - export CI_JOB_TIMESTAMP=$(date +"%s")
+    - |
+      {
+        source build-vars-docker_build.sh;
+      } || {
+        echo "No need to update.";
+        exit 0;
+      }
+    - echo ${SYS_VER}
+    - . ci-version.sh
+  script:
+    - cd_update
+
+publish-daily:
+  only:
+    - schedules
+  tags:
+    - docker01
+  stage: update-daily
+  image: harbor1.wok.wistron.com.cn/baseimage/vc-tool:latest
+  before_script:
+    - export CI_JOB_TIMESTAMP=$(date +"%s")
+    - |
+      {
+        source build-vars-docker_build.sh;
+      } || {
+        echo "No need to update.";
+        exit 0;
+      }
+    - echo ${SYS_VER}
+    - . ci-version.sh
+  script:
+    - cd_update

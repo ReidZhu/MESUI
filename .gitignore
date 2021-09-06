@@ -1,0 +1,5 @@
+node_modules*
+.umi
+yarn*
+dist
+.umi-production
